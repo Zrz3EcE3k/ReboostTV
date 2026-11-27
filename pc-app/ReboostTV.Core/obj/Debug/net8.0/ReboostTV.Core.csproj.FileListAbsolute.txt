@@ -1,0 +1,12 @@
+C:\B3ST\ReboostTV\pc-app\ReboostTV.Core\bin\Debug\net8.0\ReboostTV.Core.deps.json
+C:\B3ST\ReboostTV\pc-app\ReboostTV.Core\bin\Debug\net8.0\ReboostTV.Core.dll
+C:\B3ST\ReboostTV\pc-app\ReboostTV.Core\bin\Debug\net8.0\ReboostTV.Core.pdb
+C:\B3ST\ReboostTV\pc-app\ReboostTV.Core\obj\Debug\net8.0\ReboostTV.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\B3ST\ReboostTV\pc-app\ReboostTV.Core\obj\Debug\net8.0\ReboostTV.Core.AssemblyInfoInputs.cache
+C:\B3ST\ReboostTV\pc-app\ReboostTV.Core\obj\Debug\net8.0\ReboostTV.Core.AssemblyInfo.cs
+C:\B3ST\ReboostTV\pc-app\ReboostTV.Core\obj\Debug\net8.0\ReboostTV.Core.csproj.CoreCompileInputs.cache
+C:\B3ST\ReboostTV\pc-app\ReboostTV.Core\obj\Debug\net8.0\ReboostTV.Core.sourcelink.json
+C:\B3ST\ReboostTV\pc-app\ReboostTV.Core\obj\Debug\net8.0\ReboostTV.Core.dll
+C:\B3ST\ReboostTV\pc-app\ReboostTV.Core\obj\Debug\net8.0\refint\ReboostTV.Core.dll
+C:\B3ST\ReboostTV\pc-app\ReboostTV.Core\obj\Debug\net8.0\ReboostTV.Core.pdb
+C:\B3ST\ReboostTV\pc-app\ReboostTV.Core\obj\Debug\net8.0\ref\ReboostTV.Core.dll
