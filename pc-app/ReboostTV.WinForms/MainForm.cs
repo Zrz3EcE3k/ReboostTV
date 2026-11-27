@@ -11,63 +11,82 @@ public sealed class MainForm : Form
     private ReboostConfig _activeConfig = ReboostConfig.SafeDefault();
     private string _connectedDevice = string.Empty;
 
-    private readonly TextBox _txtIp = new() { PlaceholderText = "192.168.1.50", Width = 150 };
-    private readonly Button _btnConnect = new() { Text = "Připojit TV", Width = 110 };
-    private readonly Label _lblStatus = new() { Text = "Nepřipojeno", AutoSize = true, ForeColor = Color.DarkRed };
+    // Barvy moderního Dark Mode
+    private static readonly Color BgDark = Color.FromArgb(18, 20, 26);
+    private static readonly Color CardBg = Color.FromArgb(28, 31, 40);
+    private static readonly Color AccentBlue = Color.FromArgb(0, 132, 255);
+    private static readonly Color AccentGreen = Color.FromArgb(16, 185, 129);
+    private static readonly Color BtnNeutral = Color.FromArgb(45, 50, 64);
+    private static readonly Color TextLight = Color.FromArgb(238, 242, 248);
+    private static readonly Color TextMuted = Color.FromArgb(156, 163, 175);
+
+    private readonly ComboBox _cmbDevices = new() { Width = 175, BackColor = CardBg, ForeColor = TextLight, FlatStyle = FlatStyle.Flat };
+    private readonly Button _btnScan = MakeStyledButton("🔍 Skenovat Wi-Fi", BtnNeutral, 135, 32);
+    private readonly Button _btnConnect = MakeStyledButton("Připojit TV", AccentBlue, 110, 32);
+    private readonly Label _lblStatus = new() { Text = "● Nepřipojeno", AutoSize = true, ForeColor = Color.IndianRed, Font = new Font("Segoe UI", 9.5f, FontStyle.Bold) };
+
     private readonly TextBox _txtLog = new()
     {
         Multiline = true,
         ReadOnly = true,
         ScrollBars = ScrollBars.Vertical,
         Dock = DockStyle.Bottom,
-        Height = 140,
-        BackColor = Color.FromArgb(24, 24, 28),
-        ForeColor = Color.LightGreen,
+        Height = 135,
+        BackColor = Color.FromArgb(12, 14, 18),
+        ForeColor = Color.FromArgb(74, 222, 128),
+        BorderStyle = BorderStyle.None,
         Font = new Font("Consolas", 9.5f)
     };
 
-    // Přepínače na záložce 1-Click Boost
-    private readonly CheckBox _chkDebloat = new() { Text = "Odstranit balast (Safe Debloat)", Checked = true, AutoSize = true };
-    private readonly CheckBox _chkCache = new() { Text = "Deep Cache Clean", Checked = true, AutoSize = true };
-    private readonly CheckBox _chkAnim = new() { Text = "Zrychlit animace (0.5x)", Checked = true, AutoSize = true };
-    private readonly CheckBox _chkSilent = new() { Text = "Tiché menu (vypnout klikání)", AutoSize = true };
-    private readonly CheckBox _chkSleep = new() { Text = "Vypnout automatické usínání", AutoSize = true };
-    private readonly CheckBox _chkTurbo = new() { Text = "Nainstalovat ReboostTV Turbo HUD (.apk)", Checked = true, AutoSize = true };
-    private readonly ComboBox _cmbDns = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180 };
+    private readonly CheckBox _chkDebloat = MakeCheckBox("Odstranit balast (Safe Debloat)", true);
+    private readonly CheckBox _chkCache = MakeCheckBox("Deep Cache Clean (uvolnit skrytou paměť)", true);
+    private readonly CheckBox _chkAnim = MakeCheckBox("Zrychlit animace na 0.5x (okamžité reakce)", true);
+    private readonly CheckBox _chkSilent = MakeCheckBox("Tiché menu (vypnout klikání ovladače)", false);
+    private readonly CheckBox _chkSleep = MakeCheckBox("Vypnout automatické usínání TV", false);
+    private readonly CheckBox _chkTurbo = MakeCheckBox("Nainstalovat ReboostTV Turbo HUD (.apk)", true);
+    private readonly ComboBox _cmbDns = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180, BackColor = BtnNeutral, ForeColor = TextLight, FlatStyle = FlatStyle.Flat };
 
     public MainForm()
     {
         _baseDir = AppContext.BaseDirectory;
-        var adbPath = Path.Combine(_baseDir, "adb.exe");
-        _adb = new AdbService(adbPath);
+        _adb = new AdbService(Path.Combine(_baseDir, "adb.exe"));
 
         Text = "ReboostTV (NakopniTV) v1.0";
-        Width = 760;
-        Height = 620;
+        Width = 820;
+        Height = 650;
         StartPosition = FormStartPosition.CenterScreen;
+        BackColor = BgDark;
+        ForeColor = TextLight;
         Font = new Font("Segoe UI", 9.5f);
 
         BuildUi();
         TryAutoLoadConfig();
+
+        // Automatický sken Wi-Fi hned po otevření okna
+        Shown += async (_, _) => await ScanTvsAsync(autoConnectIfSingle: true);
     }
 
     private void BuildUi()
     {
-        // Horní lišta: Připojení k TV
         var topPanel = new FlowLayoutPanel
         {
             Dock = DockStyle.Top,
-            Height = 48,
-            Padding = new Padding(10, 10, 10, 5)
+            Height = 56,
+            BackColor = CardBg,
+            Padding = new Padding(14, 11, 14, 8)
         };
-        topPanel.Controls.Add(new Label { Text = "IP adresa TV:", AutoSize = true, Padding = new Padding(0, 5, 0, 0) });
-        topPanel.Controls.Add(_txtIp);
+
+        _cmbDevices.Text = "192.168.1.50";
+        topPanel.Controls.Add(new Label { Text = "Televize na Wi-Fi:", AutoSize = true, ForeColor = TextMuted, Padding = new Padding(0, 6, 4, 0) });
+        topPanel.Controls.Add(_cmbDevices);
+        topPanel.Controls.Add(_btnScan);
         topPanel.Controls.Add(_btnConnect);
+        _lblStatus.Padding = new Padding(10, 6, 0, 0);
         topPanel.Controls.Add(_lblStatus);
 
+        _btnScan.Click += async (_, _) => await ScanTvsAsync(autoConnectIfSingle: false);
         _btnConnect.Click += async (_, _) => await ConnectTvAsync();
 
-        // Záložky
         var tabs = new TabControl { Dock = DockStyle.Fill };
         tabs.TabPages.Add(BuildBoostTab());
         tabs.TabPages.Add(BuildToolsTab());
@@ -79,73 +98,55 @@ public sealed class MainForm : Form
 
     private TabPage BuildBoostTab()
     {
-        var page = new TabPage("1-Click Boost");
+        var page = new TabPage("🚀 1-Click Boost") { BackColor = BgDark, ForeColor = TextLight };
         var layout = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
-            Padding = new Padding(16)
+            Padding = new Padding(20)
         };
 
         _cmbDns.Items.AddRange([DnsMode.None, DnsMode.Adblock, DnsMode.Family]);
         _cmbDns.SelectedItem = DnsMode.Adblock;
 
-        var dnsRow = new FlowLayoutPanel { AutoSize = true };
-        dnsRow.Controls.Add(new Label { Text = "Private DNS:", AutoSize = true, Padding = new Padding(0, 5, 6, 0) });
+        var dnsRow = new FlowLayoutPanel { AutoSize = true, Padding = new Padding(0, 8, 0, 8) };
+        dnsRow.Controls.Add(new Label { Text = "Private DNS (Blokování reklam):", AutoSize = true, ForeColor = TextMuted, Padding = new Padding(0, 5, 8, 0) });
         dnsRow.Controls.Add(_cmbDns);
 
-        var btnLoadConfig = new Button { Text = "Načíst config.json...", Width = 170, Height = 34 };
-        btnLoadConfig.Click += (_, _) => LoadConfigDialog();
-
-        var btnBoost = new Button
-        {
-            Text = "🚀 SPUSTIT 1-CLICK BOOST",
-            Width = 240,
-            Height = 42,
-            BackColor = Color.FromArgb(0, 120, 215),
-            ForeColor = Color.White,
-            FlatStyle = FlatStyle.Flat
-        };
+        var btnBoost = MakeStyledButton("⚡ SPUSTIT 1-CLICK BOOST", AccentGreen, 250, 44);
+        btnBoost.Font = new Font("Segoe UI", 10.5f, FontStyle.Bold);
         btnBoost.Click += async (_, _) => await RunBoostAsync();
 
-        var btnReboot = new Button { Text = "Restartovat TV", Width = 140, Height = 42 };
+        var btnReboot = MakeStyledButton("🔄 Restartovat TV", BtnNeutral, 150, 44);
         btnReboot.Click += async (_, _) => await RunRebootAsync();
 
-        var actionRow = new FlowLayoutPanel { AutoSize = true, Padding = new Padding(0, 12, 0, 0) };
-        actionRow.Controls.Add(btnBoost);
-        actionRow.Controls.Add(btnReboot);
-        actionRow.Controls.Add(btnLoadConfig);
+        var btnLoadConfig = MakeStyledButton("📂 Načíst config.json", BtnNeutral, 175, 44);
+        btnLoadConfig.Click += (_, _) => LoadConfigDialog();
 
-        layout.Controls.Add(_chkDebloat);
-        layout.Controls.Add(_chkCache);
-        layout.Controls.Add(_chkAnim);
-        layout.Controls.Add(_chkSilent);
-        layout.Controls.Add(_chkSleep);
-        layout.Controls.Add(_chkTurbo);
-        layout.Controls.Add(dnsRow);
-        layout.Controls.Add(actionRow);
+        var actionRow = new FlowLayoutPanel { AutoSize = true, Padding = new Padding(0, 14, 0, 0) };
+        actionRow.Controls.AddRange([btnBoost, btnReboot, btnLoadConfig]);
 
+        layout.Controls.AddRange([_chkDebloat, _chkCache, _chkAnim, _chkSilent, _chkSleep, _chkTurbo, dnsRow, actionRow]);
         page.Controls.Add(layout);
         return page;
     }
 
     private TabPage BuildToolsTab()
     {
-        var page = new TabPage("Rentgen TV & PC Ovladač");
+        var page = new TabPage("🛠️ Rentgen TV & PC Ovladač") { BackColor = BgDark, ForeColor = TextLight };
         var layout = new FlowLayoutPanel
         {
             Dock = DockStyle.Fill,
             FlowDirection = FlowDirection.TopDown,
             WrapContents = false,
-            Padding = new Padding(16)
+            Padding = new Padding(20)
         };
 
-        // Diagnostika & Kill Switch
         var diagRow = new FlowLayoutPanel { AutoSize = true };
-        var btnKillRam = new Button { Text = "⚡ Kill Switch (RAM)", Width = 150, Height = 36 };
-        var btnPing = new Button { Text = "📶 Wi-Fi Ping Test", Width = 150, Height = 36 };
-        var btnRamInfo = new Button { Text = "📊 Stav RAM", Width = 130, Height = 36 };
+        var btnKillRam = MakeStyledButton("⚡ Kill Switch (RAM)", AccentBlue, 165, 38);
+        var btnPing = MakeStyledButton("📶 Wi-Fi Ping Test", BtnNeutral, 160, 38);
+        var btnRamInfo = MakeStyledButton("📊 Stav RAM", BtnNeutral, 130, 38);
 
         btnKillRam.Click += async (_, _) => await ExecConnectedAsync(async d =>
         {
@@ -161,27 +162,20 @@ public sealed class MainForm : Form
         btnRamInfo.Click += async (_, _) => await ExecConnectedAsync(async d =>
         {
             var r = await _adb.GetMemoryInfoAsync(d);
-            var lines = r.Output.Split('\n').Take(3);
-            Log(r.Success ? string.Join(Environment.NewLine, lines) : $"Chyba: {r.Error}");
+            Log(r.Success ? string.Join(Environment.NewLine, r.Output.Split('\n').Take(3)) : $"Chyba: {r.Error}");
         });
-
         diagRow.Controls.AddRange([btnKillRam, btnPing, btnRamInfo]);
 
-        // Ovladač
-        var remoteRow = new FlowLayoutPanel { AutoSize = true, Padding = new Padding(0, 12, 0, 0) };
-        remoteRow.Controls.Add(MakeKeyButton("▲", 19));
-        remoteRow.Controls.Add(MakeKeyButton("▼", 20));
-        remoteRow.Controls.Add(MakeKeyButton("◀", 21));
-        remoteRow.Controls.Add(MakeKeyButton("▶", 22));
-        remoteRow.Controls.Add(MakeKeyButton("OK", 23));
-        remoteRow.Controls.Add(MakeKeyButton("Zpět", 4));
-        remoteRow.Controls.Add(MakeKeyButton("Domů", 3));
-        remoteRow.Controls.Add(MakeKeyButton("Mute", 164));
+        var remoteRow = new FlowLayoutPanel { AutoSize = true, Padding = new Padding(0, 8, 0, 0) };
+        remoteRow.Controls.AddRange([
+            MakeKeyButton("▲", 19), MakeKeyButton("▼", 20), MakeKeyButton("◀", 21),
+            MakeKeyButton("▶", 22), MakeKeyButton("OK", 23), MakeKeyButton("Zpět", 4),
+            MakeKeyButton("Domů", 3), MakeKeyButton("Mute", 164)
+        ]);
 
-        // Klávesnice na hesla
-        var textRow = new FlowLayoutPanel { AutoSize = true, Padding = new Padding(0, 12, 0, 0) };
-        var txtSend = new TextBox { PlaceholderText = "Napiš heslo nebo text do TV...", Width = 280 };
-        var btnSendText = new Button { Text = "Poslat do TV", Width = 110, Height = 28 };
+        var textRow = new FlowLayoutPanel { AutoSize = true, Padding = new Padding(0, 8, 0, 0) };
+        var txtSend = new TextBox { PlaceholderText = "Napiš heslo nebo text do TV...", Width = 310, BackColor = CardBg, ForeColor = TextLight, BorderStyle = BorderStyle.FixedSingle };
+        var btnSendText = MakeStyledButton("Poslat do TV", AccentBlue, 120, 30);
         btnSendText.Click += async (_, _) => await ExecConnectedAsync(async d =>
         {
             var r = await _adb.SendTextAsync(d, txtSend.Text);
@@ -190,50 +184,87 @@ public sealed class MainForm : Form
         });
         textRow.Controls.AddRange([txtSend, btnSendText]);
 
-        layout.Controls.Add(new Label { Text = "Rychlá diagnostika:", AutoSize = true, Font = new Font(Font, FontStyle.Bold) });
+        layout.Controls.Add(new Label { Text = "Rychlá diagnostika:", AutoSize = true, ForeColor = TextMuted, Font = new Font(Font, FontStyle.Bold) });
         layout.Controls.Add(diagRow);
-        layout.Controls.Add(new Label { Text = "PC Ovladač:", AutoSize = true, Font = new Font(Font, FontStyle.Bold), Padding = new Padding(0, 10, 0, 0) });
+        layout.Controls.Add(new Label { Text = "PC Ovladač:", AutoSize = true, ForeColor = TextMuted, Font = new Font(Font, FontStyle.Bold), Padding = new Padding(0, 14, 0, 0) });
         layout.Controls.Add(remoteRow);
-        layout.Controls.Add(new Label { Text = "Klávesnice pro hesla:", AutoSize = true, Font = new Font(Font, FontStyle.Bold), Padding = new Padding(0, 10, 0, 0) });
+        layout.Controls.Add(new Label { Text = "Klávesnice pro hesla:", AutoSize = true, ForeColor = TextMuted, Font = new Font(Font, FontStyle.Bold), Padding = new Padding(0, 14, 0, 0) });
         layout.Controls.Add(textRow);
 
         page.Controls.Add(layout);
         return page;
     }
 
+    private async Task ScanTvsAsync(bool autoConnectIfSingle)
+    {
+        _btnScan.Enabled = false;
+        Log("Skenuji domácí Wi-Fi pro Android/Google/Fire TV (port 5555)...");
+        var ips = await _adb.ScanNetworkForTvsAsync();
+        _cmbDevices.Items.Clear();
+
+        if (ips.Count == 0)
+        {
+            Log("Žádná TV s povoleným ADB (5555) nebyla nalezena. Zadej IP ručně nebo zapni Ladění přes síť v TV.");
+        }
+        else
+        {
+            foreach (var ip in ips) _cmbDevices.Items.Add(ip);
+            _cmbDevices.SelectedIndex = 0;
+            Log($"Nalezeno TV: {ips.Count} ({string.Join(", ", ips)}). Vyber TV ze seznamu.");
+
+            if (autoConnectIfSingle && ips.Count == 1)
+            {
+                await ConnectTvAsync();
+            }
+        }
+        _btnScan.Enabled = true;
+    }
+
     private Button MakeKeyButton(string label, int keyCode)
     {
-        var btn = new Button { Text = label, Width = 58, Height = 34 };
-        btn.Click += async (_, _) => await ExecConnectedAsync(async d =>
-        {
-            await _adb.SendKeyEventAsync(d, keyCode);
-        });
+        var btn = MakeStyledButton(label, BtnNeutral, 62, 36);
+        btn.Click += async (_, _) => await ExecConnectedAsync(async d => await _adb.SendKeyEventAsync(d, keyCode));
         return btn;
     }
+
+    private static Button MakeStyledButton(string text, Color bg, int w, int h) => new()
+    {
+        Text = text,
+        Width = w,
+        Height = h,
+        BackColor = bg,
+        ForeColor = TextLight,
+        FlatStyle = FlatStyle.Flat,
+        Cursor = Cursors.Hand,
+        Margin = new Padding(0, 0, 8, 6),
+        FlatAppearance = { BorderSize = 0 }
+    };
+
+    private static CheckBox MakeCheckBox(string text, bool isChecked) => new()
+    {
+        Text = text,
+        Checked = isChecked,
+        AutoSize = true,
+        ForeColor = TextLight,
+        Margin = new Padding(0, 4, 0, 4)
+    };
 
     private void TryAutoLoadConfig()
     {
         var defaultPath = Path.Combine(_baseDir, "config.json");
-        if (File.Exists(defaultPath))
-        {
-            ApplyConfigFile(defaultPath);
-        }
+        if (File.Exists(defaultPath)) ApplyConfigFile(defaultPath);
     }
 
     private void LoadConfigDialog()
     {
         using var dialog = new OpenFileDialog { Filter = "JSON konfigurace (*.json)|*.json" };
-        if (dialog.ShowDialog() == DialogResult.OK)
-        {
-            ApplyConfigFile(dialog.FileName);
-        }
+        if (dialog.ShowDialog() == DialogResult.OK) ApplyConfigFile(dialog.FileName);
     }
 
     private void ApplyConfigFile(string path)
     {
         var result = ConfigValidator.LoadFromFile(path);
         _activeConfig = result.Config;
-
         _chkDebloat.Checked = _activeConfig.DebloatBloatware;
         _chkCache.Checked = _activeConfig.DeepCacheClean;
         _chkAnim.Checked = _activeConfig.FastAnimations;
@@ -243,27 +274,27 @@ public sealed class MainForm : Form
         _cmbDns.SelectedItem = _activeConfig.DnsMode;
 
         Log(result.IsValid
-            ? $"Konfigurace úspěšně načtena a ověřena: {Path.GetFileName(path)}"
+            ? $"Konfigurace ověřena: {Path.GetFileName(path)}"
             : $"VAROVÁNÍ: {result.ErrorMessage} Použito bezpečné výchozí nastavení.");
     }
 
     private async Task ConnectTvAsync()
     {
-        var ip = _txtIp.Text.Trim();
+        var ip = _cmbDevices.Text.Trim();
         Log($"Připojuji se k {ip}:5555...");
         var res = await _adb.ConnectAsync(ip);
         if (res.Success && res.Output.Contains("connected", StringComparison.OrdinalIgnoreCase))
         {
             _connectedDevice = $"{ip}:5555";
-            _lblStatus.Text = $"Připojeno ({_connectedDevice})";
-            _lblStatus.ForeColor = Color.DarkGreen;
+            _lblStatus.Text = $"● Připojeno ({ip})";
+            _lblStatus.ForeColor = AccentGreen;
             Log($"Připojeno: {res.Output}");
         }
         else
         {
             _connectedDevice = string.Empty;
-            _lblStatus.Text = "Nepřipojeno";
-            _lblStatus.ForeColor = Color.DarkRed;
+            _lblStatus.Text = "● Nepřipojeno";
+            _lblStatus.ForeColor = Color.IndianRed;
             Log($"Připojení selhalo: {res.Output} {res.Error}");
         }
     }
@@ -297,14 +328,12 @@ public sealed class MainForm : Form
     {
         if (string.IsNullOrEmpty(_connectedDevice))
         {
-            Log("Nejdřív se připoj k televizi (zadej IP adresu nahoře).");
+            Log("Nejdřív vyber TV a klikni na Připojit TV.");
             return;
         }
         await action(_connectedDevice);
     }
 
-    private void Log(string message)
-    {
+    private void Log(string message) =>
         _txtLog.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
-    }
 }

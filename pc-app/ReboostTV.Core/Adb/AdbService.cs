@@ -3,6 +3,8 @@ using System.Net;
 using System.Text.RegularExpressions;
 using ReboostTV.Core.Catalog;
 using ReboostTV.Core.Models;
+using System.Net.Sockets; 
+using System.Net.NetworkInformation;
 
 namespace ReboostTV.Core.Adb;
 
@@ -191,4 +193,51 @@ public sealed class AdbService
 
     public Task<AdbResult> RebootAsync(string device) =>
         RunAsync(["-s", device, "reboot"]);
+        /// <summary>
+    /// Paralelně proskenuje lokální podsíť (port 5555) a vrátí IP adresy nalezených Android TV.
+    /// </summary>
+    public async Task<List<string>> ScanNetworkForTvsAsync(int port = 5555, int timeoutMs = 350)
+    {
+        var foundIps = new System.Collections.Concurrent.ConcurrentBag<string>();
+        var localIp = GetLocalIpv4Address();
+        if (string.IsNullOrEmpty(localIp)) return [];
+
+        var parts = localIp.Split('.');
+        if (parts.Length != 4) return [];
+        string subnet = $"{parts[0]}.{parts[1]}.{parts[2]}";
+
+        var tasks = Enumerable.Range(1, 254).Select(async i =>
+        {
+            string ip = $"{subnet}.{i}";
+            try
+            {
+                using var client = new TcpClient();
+                var connectTask = client.ConnectAsync(ip, port);
+                if (await Task.WhenAny(connectTask, Task.Delay(timeoutMs)) == connectTask && client.Connected)
+                {
+                    foundIps.Add(ip);
+                }
+            }
+            catch { /* port zavřený nebo nedostupný */ }
+        });
+
+        await Task.WhenAll(tasks);
+        return foundIps.OrderBy(ip => ip).ToList();
+    }
+
+    private static string? GetLocalIpv4Address()
+    {
+        foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            if (ni.OperationalStatus != OperationalStatus.Up ||
+                ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+
+            foreach (var ua in ni.GetIPProperties().UnicastAddresses)
+            {
+                if (ua.Address.AddressFamily == AddressFamily.InterNetwork)
+                    return ua.Address.ToString();
+            }
+        }
+        return null;
+    }
 }
