@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "debloatBloatware": true,
+  "deepCacheClean": true,
+  "fastAnimations": true,
+  "silentMenu": false,
+  "disableSleep": false,
+  "dnsMode": "Adblock",
+  "launcher": "Projectivy",
+  "installAuroraStore": false,
+  "installTurboHud": true,
+  "enableHudAutoHide": true
+}
