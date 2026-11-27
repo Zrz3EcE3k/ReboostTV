@@ -1,0 +1,29 @@
+ReboostTV Source-Available License (v1.0)
+
+Copyright (c) 2026 ReboostTV / Zrz3EcE3k. All rights reserved.
+
+1. SOURCE TRANSPARENCY & PERSONAL USE
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software") to:
+  a) inspect and audit the source code for security and transparency;
+  b) compile and run the Software strictly for personal, non-commercial use on
+     devices owned or controlled by the user.
+
+2. COMMERCIAL RESTRICTIONS
+You may NOT, without prior written permission from the copyright holder:
+  a) sell, resell, sublicense, rent, or distribute compiled binaries or
+     modified versions of the Software for commercial gain;
+  b) rebrand or offer the Software (in whole or in part) as a competing
+     product or paid service.
+
+3. THIRD-PARTY COMPONENTS
+Android Debug Bridge (ADB / Platform-Tools) is distributed by Google under the
+Apache License 2.0 and retains its own license terms (see NOTICE.txt).
+
+4. DISCLAIMER OF WARRANTY
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY ARISING FROM OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
