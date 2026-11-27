@@ -32,7 +32,8 @@ jobs:
         with:
           name: ReboostTV-Windows
           path: publish/pc/ReboostTV.exe
-          build-tv-apk:
+
+  build-tv-apk:
     runs-on: ubuntu-latest
 
     steps:
