@@ -1,0 +1,162 @@
+namespace ReboostTV.WinForms.Localization;
+
+public static class Strings
+{
+    public static readonly string[] Languages = ["Čeština", "Slovenčina", "English", "Deutsch"];
+
+    public static string T(string lang, string key) => lang switch
+    {
+        "Slovenčina" => Sk.GetValueOrDefault(key, Cz.GetValueOrDefault(key, key)),
+        "English" => En.GetValueOrDefault(key, key),
+        "Deutsch" => De.GetValueOrDefault(key, En.GetValueOrDefault(key, key)),
+        _ => Cz.GetValueOrDefault(key, key)
+    };
+
+    private static readonly Dictionary<string, string> Cz = new()
+    {
+        ["IpLabel"] = "TV na Wi-Fi:",
+        ["Scan"] = "🔍 Skenovat",
+        ["Connect"] = "Připojit TV",
+        ["Disconnected"] = "● Nepřipojeno",
+        ["Connected"] = "● Připojeno",
+        ["TabBoost"] = "🚀 1-Click Boost",
+        ["TabTools"] = "🛠️ Rentgen && Ovladač",
+        ["Debloat"] = "Odstranit balast (Safe Debloat)",
+        ["Cache"] = "Deep Cache Clean (uvolnit skrytou paměť)",
+        ["Anim"] = "Zrychlit animace na 0.5x (okamžité reakce)",
+        ["Silent"] = "Tiché menu (vypnout klikání ovladače)",
+        ["Sleep"] = "Vypnout automatické usínání TV",
+        ["Turbo"] = "Nainstalovat ReboostTV Turbo HUD (.apk)",
+        ["AutoHide"] = "Mizející HUD (Auto-Hide při sledování videa)",
+        ["DnsLabel"] = "Private DNS:",
+        ["DnsAdblock"] = "ℹ️ Adblock: Blokuje reklamy, bannery a sledování napříč aplikacemi v TV.",
+        ["DnsFamily"] = "ℹ️ Family: Blokuje reklamy + nevhodný obsah pro děti (bezpečné vyhledávání).",
+        ["DnsNone"] = "ℹ️ None: Ponechá stávající nastavení DNS vaší televize beze změny.",
+        ["RunBoost"] = "⚡ SPUSTIT 1-CLICK BOOST",
+        ["Reboot"] = "🔄 Restartovat TV",
+        ["LoadConfig"] = "📂 Načíst config.json",
+        ["RestoreBtn"] = "↩️\nObnovit\nvýchozí",
+        ["RestoreTooltip"] = "Vrátí animace, DNS, zvuky a systémové aplikace do původního stavu",
+        ["HealthTitle"] = "SKÓRE ZDRAVÍ TV",
+        ["HealthUnknown"] = "-- / 100",
+        ["DiagTitle"] = "Rychlá diagnostika TV:",
+        ["KillRam"] = "⚡ Kill Switch (Uvolnit RAM)",
+        ["PingTest"] = "📶 Wi-Fi Ping Test (1.1.1.1)",
+        ["RamStatus"] = "📊 Stav RAM paměti",
+        ["KeyTitle"] = "Klávesnice z PC do TV (hesla, hledání):",
+        ["KeyPlaceholder"] = "Napiš heslo nebo text + Enter...",
+        ["Send"] = "Poslat",
+        ["RemoteTitle"] = "TV OVLADAČ"
+    };
+
+    private static readonly Dictionary<string, string> Sk = new()
+    {
+        ["IpLabel"] = "TV na Wi-Fi:",
+        ["Scan"] = "🔍 Skenovať",
+        ["Connect"] = "Pripojiť TV",
+        ["Disconnected"] = "● Nepripojené",
+        ["Connected"] = "● Pripojené",
+        ["TabBoost"] = "🚀 1-Click Boost",
+        ["TabTools"] = "🛠️ Röntgen && Ovládač",
+        ["Debloat"] = "Odstrániť balast (Safe Debloat)",
+        ["Cache"] = "Deep Cache Clean (uvoľniť skrytú pamäť)",
+        ["Anim"] = "Zrýchliť animácie na 0.5x (okamžité reakcie)",
+        ["Silent"] = "Tiché menu (vypnúť klikanie ovládača)",
+        ["Sleep"] = "Vypnúť automatické uspávanie TV",
+        ["Turbo"] = "Nainštalovať ReboostTV Turbo HUD (.apk)",
+        ["AutoHide"] = "Miznúci HUD (Auto-Hide pri sledovaní videa)",
+        ["DnsLabel"] = "Private DNS:",
+        ["DnsAdblock"] = "ℹ️ Adblock: Blokuje reklamy, bannery a sledovanie naprieč aplikáciami v TV.",
+        ["DnsFamily"] = "ℹ️ Family: Blokuje reklamy + nevhodný obsah pre deti (bezpečné vyhľadávanie).",
+        ["DnsNone"] = "ℹ️ None: Ponechá aktuálne nastavenie DNS vašej televízie bez zmeny.",
+        ["RunBoost"] = "⚡ SPUSTIŤ 1-CLICK BOOST",
+        ["Reboot"] = "🔄 Reštartovať TV",
+        ["LoadConfig"] = "📂 Načítať config.json",
+        ["RestoreBtn"] = "↩️\nObnoviť\npôvodné",
+        ["RestoreTooltip"] = "Vráti animácie, DNS, zvuky a systémové aplikácie do pôvodného stavu",
+        ["HealthTitle"] = "SKÓRE ZDRAVIA TV",
+        ["HealthUnknown"] = "-- / 100",
+        ["DiagTitle"] = "Rýchla diagnostika TV:",
+        ["KillRam"] = "⚡ Kill Switch (Uvoľniť RAM)",
+        ["PingTest"] = "📶 Wi-Fi Ping Test (1.1.1.1)",
+        ["RamStatus"] = "📊 Stav RAM pamäte",
+        ["KeyTitle"] = "Klávesnica z PC do TV (heslá, hľadanie):",
+        ["KeyPlaceholder"] = "Napíš heslo alebo text + Enter...",
+        ["Send"] = "Poslať",
+        ["RemoteTitle"] = "TV OVLÁDAČ"
+    };
+
+    private static readonly Dictionary<string, string> En = new()
+    {
+        ["IpLabel"] = "TV on Wi-Fi:",
+        ["Scan"] = "🔍 Scan",
+        ["Connect"] = "Connect TV",
+        ["Disconnected"] = "● Disconnected",
+        ["Connected"] = "● Connected",
+        ["TabBoost"] = "🚀 1-Click Boost",
+        ["TabTools"] = "🛠️ X-Ray && Remote",
+        ["Debloat"] = "Remove Bloatware (Safe Debloat)",
+        ["Cache"] = "Deep Cache Clean (free hidden space)",
+        ["Anim"] = "Speed up animations to 0.5x (instant UI)",
+        ["Silent"] = "Silent menu (disable remote click sounds)",
+        ["Sleep"] = "Disable TV auto-sleep",
+        ["Turbo"] = "Install ReboostTV Turbo HUD (.apk)",
+        ["AutoHide"] = "Auto-Hide HUD while watching video",
+        ["DnsLabel"] = "Private DNS:",
+        ["DnsAdblock"] = "ℹ️ Adblock: Blocks ads, banners and tracking across TV apps (AdGuard DNS).",
+        ["DnsFamily"] = "ℹ️ Family: Blocks ads + adult/inappropriate content for kids (Safe Search).",
+        ["DnsNone"] = "ℹ️ None: Keeps your current TV network DNS settings unchanged.",
+        ["RunBoost"] = "⚡ RUN 1-CLICK BOOST",
+        ["Reboot"] = "🔄 Reboot TV",
+        ["LoadConfig"] = "📂 Load config.json",
+        ["RestoreBtn"] = "↩️\nRestore\nDefaults",
+        ["RestoreTooltip"] = "Restores animations, DNS, sounds and system apps back to factory defaults",
+        ["HealthTitle"] = "TV HEALTH SCORE",
+        ["HealthUnknown"] = "-- / 100",
+        ["DiagTitle"] = "Quick TV Diagnostics:",
+        ["KillRam"] = "⚡ Kill Switch (Free RAM)",
+        ["PingTest"] = "📶 Wi-Fi Ping Test (1.1.1.1)",
+        ["RamStatus"] = "📊 RAM Status",
+        ["KeyTitle"] = "PC Keyboard to TV (passwords, search):",
+        ["KeyPlaceholder"] = "Type password or text + Enter...",
+        ["Send"] = "Send",
+        ["RemoteTitle"] = "TV REMOTE"
+    };
+
+    private static readonly Dictionary<string, string> De = new()
+    {
+        ["IpLabel"] = "TV im WLAN:",
+        ["Scan"] = "🔍 Scannen",
+        ["Connect"] = "TV verbinden",
+        ["Disconnected"] = "● Getrennt",
+        ["Connected"] = "● Verbunden",
+        ["TabBoost"] = "🚀 1-Click Boost",
+        ["TabTools"] = "🛠️ Diagnose && Fernbedienung",
+        ["Debloat"] = "Bloatware entfernen (Safe Debloat)",
+        ["Cache"] = "Deep Cache Clean (Speicher freigeben)",
+        ["Anim"] = "Animationen auf 0.5x (sofortige Reaktion)",
+        ["Silent"] = "Leises Menü (Klickgeräusche aus)",
+        ["Sleep"] = "Automatischen Ruhezustand deaktivieren",
+        ["Turbo"] = "ReboostTV Turbo HUD installieren (.apk)",
+        ["AutoHide"] = "Auto-Hide HUD bei Videowiedergabe",
+        ["DnsLabel"] = "Private DNS:",
+        ["DnsAdblock"] = "ℹ️ Adblock: Blockiert Werbung und Tracker in TV-Apps (AdGuard DNS).",
+        ["DnsFamily"] = "ℹ️ Family: Blockiert Werbung + jugendgefährdende Inhalte (Kinderschutz).",
+        ["DnsNone"] = "ℹ️ None: Behält die aktuellen DNS-Einstellungen des TVs bei.",
+        ["RunBoost"] = "⚡ 1-CLICK BOOST STARTEN",
+        ["Reboot"] = "🔄 TV neu starten",
+        ["LoadConfig"] = "📂 config.json laden",
+        ["RestoreBtn"] = "↩️\nStandard\nherstellen",
+        ["RestoreTooltip"] = "Setzt Animationen, DNS, Töne und System-Apps auf Standard zurück",
+        ["HealthTitle"] = "TV-ZUSTAND",
+        ["HealthUnknown"] = "-- / 100",
+        ["DiagTitle"] = "Schnelldiagnose:",
+        ["KillRam"] = "⚡ Kill Switch (RAM leeren)",
+        ["PingTest"] = "📶 WLAN-Ping-Test (1.1.1.1)",
+        ["RamStatus"] = "📊 RAM-Status",
+        ["KeyTitle"] = "PC-Tastatur für TV (Passwörter, Suche):",
+        ["KeyPlaceholder"] = "Passwort oder Text + Enter...",
+        ["Send"] = "Senden",
+        ["RemoteTitle"] = "FERNBEDIENUNG"
+    };
+}

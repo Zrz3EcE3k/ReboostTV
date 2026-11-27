@@ -193,51 +193,149 @@ public sealed class AdbService
 
     public Task<AdbResult> RebootAsync(string device) =>
         RunAsync(["-s", device, "reboot"]);
-        /// <summary>
-    /// Paralelně proskenuje lokální podsíť (port 5555) a vrátí IP adresy nalezených Android TV.
+       
+    /// <summary>
+    /// Proskenuje všechny reálné aktivní LAN/Wi-Fi podsítě s výchozí bránou (192.168.x.x, 10.0.x.x, 172.16.x.x...).
     /// </summary>
-    public async Task<List<string>> ScanNetworkForTvsAsync(int port = 5555, int timeoutMs = 350)
+    public async Task<(List<string> FoundIps, List<string> ScannedSubnets)> ScanNetworkForTvsAsync(int port = 5555, int timeoutMs = 400)
     {
         var foundIps = new System.Collections.Concurrent.ConcurrentBag<string>();
-        var localIp = GetLocalIpv4Address();
-        if (string.IsNullOrEmpty(localIp)) return [];
+        var subnets = GetActiveLanSubnets();
+        if (subnets.Count == 0) return ([], []);
 
-        var parts = localIp.Split('.');
-        if (parts.Length != 4) return [];
-        string subnet = $"{parts[0]}.{parts[1]}.{parts[2]}";
-
-        var tasks = Enumerable.Range(1, 254).Select(async i =>
+        var allTasks = new List<Task>();
+        foreach (var subnet in subnets)
         {
-            string ip = $"{subnet}.{i}";
-            try
+            for (int i = 1; i <= 254; i++)
             {
-                using var client = new TcpClient();
-                var connectTask = client.ConnectAsync(ip, port);
-                if (await Task.WhenAny(connectTask, Task.Delay(timeoutMs)) == connectTask && client.Connected)
+                string ip = $"{subnet}.{i}";
+                allTasks.Add(Task.Run(async () =>
                 {
-                    foundIps.Add(ip);
-                }
-            }
-            catch { /* port zavřený nebo nedostupný */ }
-        });
-
-        await Task.WhenAll(tasks);
-        return foundIps.OrderBy(ip => ip).ToList();
-    }
-
-    private static string? GetLocalIpv4Address()
-    {
-        foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
-        {
-            if (ni.OperationalStatus != OperationalStatus.Up ||
-                ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
-
-            foreach (var ua in ni.GetIPProperties().UnicastAddresses)
-            {
-                if (ua.Address.AddressFamily == AddressFamily.InterNetwork)
-                    return ua.Address.ToString();
+                    try
+                    {
+                        using var client = new TcpClient();
+                        var connectTask = client.ConnectAsync(ip, port);
+                        if (await Task.WhenAny(connectTask, Task.Delay(timeoutMs)) == connectTask && client.Connected)
+                        {
+                            foundIps.Add(ip);
+                        }
+                    }
+                    catch { /* port zavřený nebo nedostupný */ }
+                }));
             }
         }
-        return null;
+
+        await Task.WhenAll(allTasks);
+        return (foundIps.Distinct().OrderBy(ip => ip).ToList(), subnets);
+    }
+
+    private static List<string> GetActiveLanSubnets()
+    {
+        var subnets = new HashSet<string>();
+
+        foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
+        {
+            if (ni.OperationalStatus != OperationalStatus.Up) continue;
+            if (ni.NetworkInterfaceType is NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel) continue;
+
+            // Vyfiltrovat běžné virtuální adaptéry (WSL, Hyper-V, VPN, VirtualBox, VMware)
+            string desc = ni.Description.ToLowerInvariant();
+            if (desc.Contains("virtual") || desc.Contains("hyper-v") || desc.Contains("wsl") ||
+                desc.Contains("vmware") || desc.Contains("vbox") || desc.Contains("vpn") || desc.Contains("tap-"))
+                continue;
+
+            var ipProps = ni.GetIPProperties();
+            // Klíčová kontrola: reálná domácí síť má vždy nastavenou výchozí bránu (router / DHCP)
+            bool hasGateway = ipProps.GatewayAddresses.Any(g =>
+                g.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.Any.Equals(g.Address));
+            if (!hasGateway) continue;
+
+            foreach (var ua in ipProps.UnicastAddresses)
+            {
+                if (ua.Address.AddressFamily != AddressFamily.InterNetwork) continue;
+                var parts = ua.Address.ToString().Split('.');
+                if (parts.Length == 4)
+                {
+                    subnets.Add($"{parts[0]}.{parts[1]}.{parts[2]}");
+                }
+            }
+        }
+
+        return subnets.ToList();
+    }
+// --- SKÓRE ZDRAVÍ TV, ZÁLOHA A OBNOVA ---
+
+    public async Task<(int Score, string Summary)> CalculateHealthScoreAsync(string device)
+    {
+        int score = 45; // Základní skóre
+
+        // 1. Kontrola Private DNS (+20 bodů)
+        var dnsRes = await ShellAsync(device, "settings", "get", "global", "private_dns_mode");
+        bool hasDns = dnsRes.Success && dnsRes.Output.Contains("hostname", StringComparison.OrdinalIgnoreCase);
+        if (hasDns) score += 20;
+
+        // 2. Kontrola zrychlených animací (+15 bodů)
+        var animRes = await ShellAsync(device, "settings", "get", "global", "window_animation_scale");
+        bool fastAnim = animRes.Success && animRes.Output.Trim() is "0.5" or "0.0" or "0";
+        if (fastAnim) score += 15;
+
+        // 3. Kontrola přítomnosti balastu (+20 bodů, pokud je vyčištěno)
+        var pkgRes = await ShellAsync(device, "pm", "list", "packages");
+        int bloatCount = 0;
+        if (pkgRes.Success)
+        {
+            bloatCount = KnownTargets.SafeBloatwarePackages.Count(p =>
+                pkgRes.Output.Contains(p, StringComparison.OrdinalIgnoreCase));
+        }
+        score += Math.Max(0, 20 - (bloatCount * 4));
+
+        score = Math.Clamp(score, 10, 100);
+        string summary = $"DNS: {(hasDns ? "ON" : "OFF")} | Anim: {(fastAnim ? "0.5x" : "1.0x")} | Balast: {bloatCount}";
+        return (score, summary);
+    }
+
+    public async Task<string> SaveBackupAsync(string device)
+    {
+        string backupDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "ReboostTV");
+        Directory.CreateDirectory(backupDir);
+
+        string filePath = Path.Combine(backupDir, $"backup_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+        var dns = await ShellAsync(device, "settings", "get", "global", "private_dns_mode");
+        var anim = await ShellAsync(device, "settings", "get", "global", "window_animation_scale");
+        var pkgs = await ShellAsync(device, "pm", "list", "packages");
+
+        string content = $"ReboostTV Backup ({DateTime.Now:O})\nDevice: {device}\nDNS: {dns.Output}\nAnim: {anim.Output}\n\nPackages:\n{pkgs.Output}";
+        await File.WriteAllTextAsync(filePath, content);
+        return filePath;
+    }
+
+    public async Task<List<string>> RestoreDefaultsAsync(string device)
+    {
+        var log = new List<string>();
+
+        await ShellAsync(device, "settings", "put", "global", "window_animation_scale", "1.0");
+        await ShellAsync(device, "settings", "put", "global", "transition_animation_scale", "1.0");
+        await ShellAsync(device, "settings", "put", "global", "animator_duration_scale", "1.0");
+        log.Add("Animace vráceny na výchozích 1.0x.");
+
+        await ShellAsync(device, "settings", "put", "global", "private_dns_mode", "off");
+        log.Add("Private DNS vráceno na výchozí (off).");
+
+        await ShellAsync(device, "settings", "put", "system", "sound_effects_enabled", "1");
+        log.Add("Zvuky menu obnoveny.");
+
+        int restored = 0;
+        foreach (var pkg in KnownTargets.SafeBloatwarePackages)
+        {
+            var res = await ShellAsync(device, "cmd", "package", "install-existing", pkg);
+            if (res.Success && res.Output.Contains("installed", StringComparison.OrdinalIgnoreCase))
+            {
+                restored++;
+            }
+        }
+        log.Add($"Obnoveno {restored} původních systémových aplikací.");
+        return log;
     }
 }
