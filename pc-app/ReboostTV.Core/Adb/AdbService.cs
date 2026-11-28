@@ -3,7 +3,7 @@ using System.Net;
 using System.Text.RegularExpressions;
 using ReboostTV.Core.Catalog;
 using ReboostTV.Core.Models;
-using System.Net.Sockets; 
+using System.Net.Sockets;
 using System.Net.NetworkInformation;
 
 namespace ReboostTV.Core.Adb;
@@ -82,6 +82,16 @@ public sealed class AdbService
         return RunAsync(["connect", $"{parsedIp}:{port}"]);
     }
 
+    /// <summary>
+    /// Reálně ověří přes ADB, zda je zařízení skutečně online a autorizované (ne offline / unauthorized).
+    /// </summary>
+    public async Task<bool> IsDeviceOnlineAsync(string targetDevice)
+    {
+        if (string.IsNullOrWhiteSpace(targetDevice)) return false;
+        var res = await RunAsync(["-s", targetDevice, "get-state"], timeoutMs: 4000);
+        return res.Success && res.Output.Equals("device", StringComparison.OrdinalIgnoreCase);
+    }
+
     public Task<AdbResult> ShellAsync(string targetDevice, params string[] shellArgs)
     {
         var args = new List<string> { "-s", targetDevice, "shell" };
@@ -153,7 +163,11 @@ public sealed class AdbService
                 {
                     await ShellAsync(device, "appops", "set", KnownTargets.TurboPackageName, "SYSTEM_ALERT_WINDOW", "allow");
                     await ShellAsync(device, "appops", "set", KnownTargets.TurboPackageName, "GET_USAGE_STATS", "allow");
-                    log.Add("ReboostTV Turbo HUD nainstalován a oprávnění povolena.");
+
+                    // Okamžité spuštění HUD služby bez nutnosti otevírat aplikaci na TV
+                    string autoHideVal = config.EnableHudAutoHide ? "true" : "false";
+                    await ShellAsync(device, "am", "start-foreground-service", "-n", $"{KnownTargets.TurboPackageName}/.HudService", "--ez", "autoHide", autoHideVal);
+                    log.Add("ReboostTV Turbo HUD nainstalován, oprávnění povolena a HUD automaticky spuštěn.");
                 }
             }
             else
@@ -180,7 +194,6 @@ public sealed class AdbService
             return Task.FromResult(new AdbResult(false, string.Empty, "Text obsahuje nepodporované znaky."));
         }
 
-        // ADB input text vyžaduje nahradit mezery za %s
         string escaped = text.Replace(" ", "%s");
         return ShellAsync(device, "input", "text", escaped);
     }
@@ -193,10 +206,7 @@ public sealed class AdbService
 
     public Task<AdbResult> RebootAsync(string device) =>
         RunAsync(["-s", device, "reboot"]);
-       
-    /// <summary>
-    /// Proskenuje všechny reálné aktivní LAN/Wi-Fi podsítě s výchozí bránou (192.168.x.x, 10.0.x.x, 172.16.x.x...).
-    /// </summary>
+
     public async Task<(List<string> FoundIps, List<string> ScannedSubnets)> ScanNetworkForTvsAsync(int port = 5555, int timeoutMs = 400)
     {
         var foundIps = new System.Collections.Concurrent.ConcurrentBag<string>();
@@ -238,14 +248,12 @@ public sealed class AdbService
             if (ni.OperationalStatus != OperationalStatus.Up) continue;
             if (ni.NetworkInterfaceType is NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel) continue;
 
-            // Vyfiltrovat běžné virtuální adaptéry (WSL, Hyper-V, VPN, VirtualBox, VMware)
             string desc = ni.Description.ToLowerInvariant();
             if (desc.Contains("virtual") || desc.Contains("hyper-v") || desc.Contains("wsl") ||
                 desc.Contains("vmware") || desc.Contains("vbox") || desc.Contains("vpn") || desc.Contains("tap-"))
                 continue;
 
             var ipProps = ni.GetIPProperties();
-            // Klíčová kontrola: reálná domácí síť má vždy nastavenou výchozí bránu (router / DHCP)
             bool hasGateway = ipProps.GatewayAddresses.Any(g =>
                 g.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.Any.Equals(g.Address));
             if (!hasGateway) continue;
@@ -263,23 +271,21 @@ public sealed class AdbService
 
         return subnets.ToList();
     }
-// --- SKÓRE ZDRAVÍ TV, ZÁLOHA A OBNOVA ---
+
+    // --- SKÓRE ZDRAVÍ TV, ZÁLOHA A OBNOVA ---
 
     public async Task<(int Score, string Summary)> CalculateHealthScoreAsync(string device)
     {
-        int score = 45; // Základní skóre
+        int score = 45;
 
-        // 1. Kontrola Private DNS (+20 bodů)
         var dnsRes = await ShellAsync(device, "settings", "get", "global", "private_dns_mode");
         bool hasDns = dnsRes.Success && dnsRes.Output.Contains("hostname", StringComparison.OrdinalIgnoreCase);
         if (hasDns) score += 20;
 
-        // 2. Kontrola zrychlených animací (+15 bodů)
         var animRes = await ShellAsync(device, "settings", "get", "global", "window_animation_scale");
         bool fastAnim = animRes.Success && animRes.Output.Trim() is "0.5" or "0.0" or "0";
         if (fastAnim) score += 15;
 
-        // 3. Kontrola přítomnosti balastu (+20 bodů, pokud je vyčištěno)
         var pkgRes = await ShellAsync(device, "pm", "list", "packages");
         int bloatCount = 0;
         if (pkgRes.Success)
