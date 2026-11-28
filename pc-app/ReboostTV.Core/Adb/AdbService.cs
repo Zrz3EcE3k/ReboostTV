@@ -187,6 +187,7 @@ public sealed class AdbService
                 log.Add("ReboostTV-Turbo.apk nebyl nalezen vedle aplikace (přeskočeno).");
             }
         }
+        return log;
     }
 
     // --- RENTGEN TV & PC OVLADAČ ---
