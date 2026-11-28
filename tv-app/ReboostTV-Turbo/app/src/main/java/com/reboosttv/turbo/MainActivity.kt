@@ -27,7 +27,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setBackgroundColor(Color.parseColor("#0F172A"))
-            setPadding(80, 50, 80, 50)
+            setPadding(80, 28, 80, 28)
         }
 
         val title = TextView(this).apply {
@@ -113,7 +113,7 @@ class MainActivity : Activity() {
             background = states
             isFocusable = true
             isFocusableInTouchMode = true
-            layoutParams = LinearLayout.LayoutParams(900, 120).apply {
+            layoutParams = LinearLayout.LayoutParams(900, 90.apply {
                 setMargins(0, 14, 0, 14)
             }
             setOnFocusChangeListener { v, hasFocus ->

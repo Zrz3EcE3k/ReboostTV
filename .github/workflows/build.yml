@@ -55,8 +55,11 @@ jobs:
         working-directory: tv-app/ReboostTV-Turbo
         run: gradle assembleDebug
 
+      - name: Rename APK to ReboostTV-Turbo.apk
+        run: cp tv-app/ReboostTV-Turbo/app/build/outputs/apk/debug/app-debug.apk tv-app/ReboostTV-Turbo/app/build/outputs/apk/debug/ReboostTV-Turbo.apk
+
       - name: Upload ReboostTV-Turbo.apk artifact
         uses: actions/upload-artifact@v4
         with:
           name: ReboostTV-AndroidTV
-          path: tv-app/ReboostTV-Turbo/app/build/outputs/apk/debug/app-debug.apk
+          path: tv-app/ReboostTV-Turbo/app/build/outputs/apk/debug/ReboostTV-Turbo.apk
