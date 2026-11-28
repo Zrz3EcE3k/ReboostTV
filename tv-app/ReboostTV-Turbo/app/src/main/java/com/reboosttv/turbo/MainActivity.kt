@@ -113,7 +113,7 @@ class MainActivity : Activity() {
             background = states
             isFocusable = true
             isFocusableInTouchMode = true
-            layoutParams = LinearLayout.LayoutParams(900, 90.apply {
+            layoutParams = LinearLayout.LayoutParams(900, 90).apply {
                 setMargins(0, 14, 0, 14)
             }
             setOnFocusChangeListener { v, hasFocus ->

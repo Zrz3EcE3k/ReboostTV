@@ -105,7 +105,7 @@ public sealed class MainForm : Form
         _baseDir = AppContext.BaseDirectory;
         _adb = new AdbService(Path.Combine(_baseDir, "adb.exe"));
 
-        Text = "ReboostTV (NakopniTV) v1.0";
+        Text = "ReboostTV (NakopniTV) v1.11";
         Width = 940;
         Height = 710;
         MinimumSize = new Size(880, 660);
@@ -641,15 +641,19 @@ public sealed class MainForm : Form
     });
 
     private async Task ExecConnectedAsync(Func<string, Task> action)
-    {
-        if (string.IsNullOrEmpty(_connectedDevice))
-        {
-            Log("Nejdřív vyber TV a klikni na Připojit TV.");
-            return;
-        }
-        await action(_connectedDevice);
-    }
-
-    private void Log(string message) =>
-        _txtLog.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
-}
+ {
+     if (string.IsNullOrEmpty(_connectedDevice) || !await _adb.IsDeviceOnlineAsync(_connectedDevice))
+     {
+         _connectedDevice = string.Empty;
+         _lblStatus.ForeColor = AccentRed;
+         ApplyLanguage();
+         Log("TV není připojena! Nejdřív vyber televizi a klikni na Připojit TV.");
+         MessageBox.Show(
+             "Televize není připojena (nebo se odpojila).\nNejprve vyberte TV a klikněte na Připojit TV.",
+             "ReboostTV – TV není připojena",
+             MessageBoxButtons.OK,
+             MessageBoxIcon.Warning);
+         return;
+     }
+     await action(_connectedDevice);
+ }

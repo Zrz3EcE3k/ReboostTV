@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ReboostTV")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.1.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.1.0+82dcc95a60277cb9f3a634cc2eb6af622865df2d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.1.0+14fa44b0489f4849661811082b976bf124c1e1de")]
 [assembly: System.Reflection.AssemblyProductAttribute("ReboostTV")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ReboostTV")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.1.0.0")]
