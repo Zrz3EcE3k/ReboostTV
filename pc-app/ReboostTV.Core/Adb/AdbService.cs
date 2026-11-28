@@ -153,21 +153,33 @@ public sealed class AdbService
             log.Add($"Nastaveno Private DNS: {dnsHost}");
         }
 
-        if (config.InstallTurboHud)
+       if (config.InstallTurboHud)
         {
             var turboApk = Path.Combine(apkFolder, KnownTargets.LocalApkNames.TurboHud);
             if (File.Exists(turboApk))
             {
+                // 1. Pokud už je v TV starší verze HUDu, nejdřív ji čistě odinstalujeme (řeší konflikt podpisu)
+                var uninst = await RunAsync(["-s", device, "uninstall", KnownTargets.TurboPackageName], timeoutMs: 15000);
+                if (uninst.Success && uninst.Output.Contains("Success", StringComparison.OrdinalIgnoreCase))
+                {
+                    log.Add("Starší verze ReboostTV Turbo HUD byla odstraněna.");
+                }
+
+                // 2. Čistá instalace nové verze
                 var inst = await RunAsync(["-s", device, "install", "-r", turboApk], timeoutMs: 45000);
                 if (inst.Success)
                 {
                     await ShellAsync(device, "appops", "set", KnownTargets.TurboPackageName, "SYSTEM_ALERT_WINDOW", "allow");
                     await ShellAsync(device, "appops", "set", KnownTargets.TurboPackageName, "GET_USAGE_STATS", "allow");
 
-                    // Okamžité spuštění HUD služby bez nutnosti otevírat aplikaci na TV
+                    // 3. Okamžité spuštění HUD služby bez nutnosti otevírat aplikaci na TV
                     string autoHideVal = config.EnableHudAutoHide ? "true" : "false";
                     await ShellAsync(device, "am", "start-foreground-service", "-n", $"{KnownTargets.TurboPackageName}/.HudService", "--ez", "autoHide", autoHideVal);
-                    log.Add("ReboostTV Turbo HUD nainstalován, oprávnění povolena a HUD automaticky spuštěn.");
+                    log.Add("Nový ReboostTV Turbo HUD nainstalován, oprávnění povolena a HUD automaticky spuštěn.");
+                }
+                else
+                {
+                    log.Add($"Chyba instalace ReboostTV Turbo HUD: {inst.Output} {inst.Error}".Trim());
                 }
             }
             else
@@ -175,8 +187,6 @@ public sealed class AdbService
                 log.Add("ReboostTV-Turbo.apk nebyl nalezen vedle aplikace (přeskočeno).");
             }
         }
-
-        return log;
     }
 
     // --- RENTGEN TV & PC OVLADAČ ---
