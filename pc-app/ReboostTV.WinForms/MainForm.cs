@@ -657,9 +657,6 @@ public sealed class MainForm : Form
      }
      await action(_connectedDevice);
 
-await action(_connectedDevice);
-    }
-
     private void Log(string message) =>
         _txtLog.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}{Environment.NewLine}");
 
